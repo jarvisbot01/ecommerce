@@ -1,0 +1,81 @@
+name: ecommerce
+
+services:
+  # ----------------------------------------------------
+  # Base de Datos Relacional: PostgreSQL
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:18-alpine
+    container_name: ecommerce_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ecommerce_ventas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ecommerce_ventas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce_network
+
+  # ----------------------------------------------------
+  # Backend API: NestJS (Multi-stage build con tini)
+  # ----------------------------------------------------
+  backend:
+    build:
+      context: ./packages/backend
+      dockerfile: Dockerfile
+    image: ecommerce-ventas-backend:latest
+    container_name: ecommerce_backend
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/ecommerce_ventas
+      JWT_ACCESS_SECRET: nexus_super_access_secret_key_7634xyz
+      JWT_REFRESH_HMAC_SECRET: nexus_refresh_hmac_secret_key_9988_abc
+      JWT_SECRET_OAUTH: nexus_super_secret_jwt_key_2798
+      OPENAPI_API_KEY: test_openapi_sandbox_key
+      BASE_URL: http://localhost:4000
+      FRONTEND_URL: http://localhost:3001
+      CORS_ALLOWED_ORIGINS: http://localhost:3001,http://127.0.0.1:3001
+      MCP_ALLOWED_HOSTS: localhost,127.0.0.1,[::1]
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  # ----------------------------------------------------
+  # Frontend: Next.js estático servido en Nginx Alpine
+  # ----------------------------------------------------
+  frontend:
+    build:
+      context: ./packages/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ""
+    image: ecommerce-ventas-frontend:latest
+    container_name: ecommerce_frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - ecommerce_network
+
+volumes:
+  postgres_data:
+
+networks:
+  ecommerce_network:
+    driver: bridge

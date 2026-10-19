@@ -1,0 +1,9 @@
+[submodule "packages/backend"]
+	path = packages/backend
+	url = git@github.com:jarvisbot01/backend.git
+[submodule "packages/frontend.git"]
+	path = packages/frontend.git
+	url = git@github.com:jarvisbot01/frontend.git
+[submodule "packages/frontend"]
+	path = packages/frontend
+	url = git@github.com:jarvisbot01/frontend.git
